@@ -187,7 +187,8 @@ open_connection(#pool{pool_id=PoolId, host=Host, port=Port, user=User,
                       start_cmds=StartCmds, connect_timeout=ConnectTimeout} = Pool) ->
      %-% io:format("~p open connection for pool ~p host ~p port ~p user ~p base ~p~n", [self(), PoolId, Host, Port, User, Database]),
      %-% io:format("~p open connection: ... connect ... ~n", [self()]),
-    case gen_tcp:connect(Host, Port, [binary, {packet, raw}, {active, false}, {recbuf, ?TCP_RECV_BUFFER}], ConnectTimeout) of
+    IpFamily = host_ipfamily(Host),
+    case gen_tcp:connect(Host, Port, [IpFamily | ?SOCKET_OPTIONS], ConnectTimeout) of
         {ok, Sock} ->
             #greeting {
                server_version = Version,
@@ -218,6 +219,21 @@ open_connection(#pool{pool_id=PoolId, host=Host, port=Port, user=User,
              %-% io:format("~p open connection: ... ERROR ~p~n", [self(), Reason]),
              %-% io:format("~p open connection: ... exit with failed_to_connect_to_database~n", [self()]),
             exit({failed_to_connect_to_database, Reason})
+    end.
+
+host_ipfamily(Host) ->
+    case inet_parse:address(Host) of
+        {ok, {_, _, _, _, _, _, _, _}} -> inet6;
+        {ok, {_, _, _, _}}             -> inet;
+        _ ->
+            case inet:getaddr(Host, inet6) of
+                {ok, _} -> inet6;
+                _ ->
+                    case inet:getaddr(Host, inet) of
+                        {ok, _}         -> inet;
+                        {error, Reason} -> exit(Reason)
+                    end
+            end
     end.
 
 handshake(Sock, User, Password) ->

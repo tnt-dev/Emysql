@@ -125,7 +125,10 @@
 -define(CONNECT_WITH_DB, 8).
 -define(CONN_TEST_PERIOD, 28000).
 -define(TCP_RECV_BUFFER, 8192).
-
+-define(SOCKET_OPTIONS, [binary,
+                         {packet, raw},
+                         {active, false},
+                         {recbuf, ?TCP_RECV_BUFFER}]).
 
 %% MYSQL TYPES
 -define(FIELD_TYPE_DECIMAL, 16#00).
